@@ -139,6 +139,7 @@ USE_TZ = False
 
 STATIC_URL = '/static/'
 
+
 LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,
@@ -178,3 +179,35 @@ LOGGING = {
         },
     }
 }
+
+# redis
+# CACHES = {
+#     "default": {
+#         "BACKEND": "django_redis.cache.RedisCache",
+#         "LOCATION": "redis://127.0.0.1:6379/0",
+#         "OPTIONS": {
+#             "CLIENT_CLASS": "django_redis.client.DefaultClient",
+#         }
+#     },
+#     "session": {
+#         "BACKEND": "django_redis.cache.RedisCache",
+#         "LOCATION": "redis://127.0.0.1:6379/1",
+#         "OPTIONS": {
+#             "CLIENT_CLASS": "django_redis.client.DefaultClient",
+#         }
+#     },
+# }
+#
+#
+#
+# # session 设置
+# SESSION_ENGINE = 'django.contrib.sessions.backends.cache'
+# SESSION_CACHE_ALIAS = "session"
+# # SESSION_REDIS_HOST = 'localhost'
+# # SESSION_REDIS_PORT = 6379
+# # SESSION_REDIS_DB = 1
+# SESSION_COOKIE_AGE = 60 * 30
+# SESSION_SAVE_EVERY_REQUEST = True
+# SESSION_EXPIRE_AT_BROWSER_CLOSE = True  # 关闭浏览器,则COOKIE失效
+# SESSION_REDIS_PASSWORD = ''
+# SESSION_REDIS_PREFIX = 'session'

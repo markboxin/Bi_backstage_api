@@ -11,7 +11,8 @@ from django.db import models
 class LbBiInterfOrderUnit(models.Model):
     school_id = models.IntegerField(blank=True, primary_key=True)
     school_name = models.CharField(max_length=255, blank=True, null=True)
-    class_name = models.CharField(max_length=255, blank=True, null=True)  # Field renamed to remove unsuitable characters. Field renamed because it started with '_'.
+    class_name = models.CharField(max_length=255, blank=True, null=True)
+    class_id = models.CharField(max_length=255, blank=True, null=True)# Field renamed to remove unsuitable characters. Field renamed because it started with '_'.
     combo_id = models.IntegerField(blank=True, null=True)
     combo_name = models.CharField(max_length=255, blank=True, null=True)
     sales_unit_id = models.IntegerField(blank=True, null=True)
@@ -41,7 +42,7 @@ class LbBiInterfOrderUnit(models.Model):
     is_nerwork = models.CharField(max_length=255, blank=True, null=True)  # Field renamed to remove unsuitable characters. Field renamed because it started with '_'.
     network_follow_name = models.CharField(max_length=255, blank=True, null=True)  # Field renamed to remove unsuitable characters. Field renamed because it started with '_'.
     network_install_fee = models.CharField(max_length=255, blank=True, null=True)
-    is_garden_confirm = models.BooleanField(max_length=255, default=False)  # Field renamed to remove unsuitable characters. Field renamed because it started with '_'.
+    is_garden_confirm = models.CharField(max_length=255)  # Field renamed to remove unsuitable characters. Field renamed because it started with '_'.
     garden_oper = models.CharField(max_length=255, blank=True, null=True)  # Field renamed to remove unsuitable characters. Field renamed because it started with '_'.
     garden_confirm_time = models.CharField(max_length=255, blank=True, null=True)  # Field renamed to remove unsuitable characters. Field renamed because it started with '_'.
     send_goods_status = models.CharField(max_length=255, blank=True, null=True)  # Field renamed to remove unsuitable characters. Field renamed because it started with '_'.
@@ -51,6 +52,11 @@ class LbBiInterfOrderUnit(models.Model):
     plan_complete = models.CharField(max_length=255, blank=True, null=True)  # Field renamed to remove unsuitable characters. Field renamed because it started with '_'.
     plan_uncomplete = models.CharField(max_length=255, blank=True, null=True)  # Field renamed to remove unsuitable characters. Field renamed because it started with '_'.
     order_status_detail = models.CharField(max_length=255, blank=True, null=True)
+    unpaid_amount = models.CharField(max_length=255, blank=True, null=True)
+    school_address = models.CharField(max_length=255, blank=True, null=True)
+    out_time = models.CharField(max_length=255, blank=True, null=True)
+    pay_voucher = models.CharField(max_length=255, blank=True, null=True)
+
     class Meta:
         managed = False
         db_table = 'lb_bi_interf_order_unit'
