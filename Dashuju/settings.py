@@ -43,7 +43,12 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'login.apps.LoginConfig',
     'corsheaders',
-    'combo.apps.ComboConfig'
+    'combo.apps.ComboConfig',
+    'erp.apps.ErpConfig',
+    'course.apps.CourseConfig',
+    'combov1.apps.Combov1Config',
+    'order_flow.apps.OrderFlowConfig',
+    'rbac.apps.RbacConfig',
 ]
 MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',
@@ -54,8 +59,9 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'rbac.middleware.rbac.RbacMiddleware'
 ]
-CORS_ORIGIN_ALLOW_ALL= True
+CORS_ORIGIN_ALLOW_ALL = True
 
 CORS_ALLOW_CREDENTIALS = True
 
@@ -211,3 +217,26 @@ LOGGING = {
 # SESSION_EXPIRE_AT_BROWSER_CLOSE = True  # 关闭浏览器,则COOKIE失效
 # SESSION_REDIS_PASSWORD = ''
 # SESSION_REDIS_PREFIX = 'session'
+
+# 定义session 键：
+# 保存用户权限url列表
+# 保存 权限菜单 和所有 菜单
+SESSION_PERMISSION_URL_KEY = 'cool'
+
+SESSION_MENU_KEY = 'awesome'
+ALL_MENU_KEY = 'k1'
+PERMISSION_MENU_KEY = 'k2'
+
+LOGIN_URL = '/api/login/'
+
+REGEX_URL = r'^{url}$'  # url作严格匹配
+
+# 配置url权限白名单
+SAFE_URL = [
+    r'/api/login/',
+    '/login/',
+    '/admin/.*',
+    '/api/userlist',
+    '^/rbac/',
+    '/api/logout/',
+]

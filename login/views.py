@@ -1,10 +1,16 @@
 from django.contrib.auth.models import User
 # Create your views here.
 import json
-from .models import UserInfo
+from rbac.models import UserInfo
 from django.http import HttpResponse, JsonResponse
 from django import forms
+from rbac.service.init_permission import init_permission
 from django.views.generic import View
+from django.db.models import Q
+from django.conf import settings
+from django.contrib.auth.hashers import make_password, check_password
+from rbac.forms import UserInfoModelForm
+from django.core import serializers
 
 
 def acc_login(request):
@@ -16,6 +22,10 @@ def acc_login(request):
         print("password：" + password)
         try:
             user = UserInfo.objects.filter(username=username, password=password).first()
+            # if check_password(password, user.password):
+            #     print('密码正确')
+            # else:
+            #     return HttpResponse('密码错误！'
         except UserInfo.DoesNotExist:
             return HttpResponse(status=404)
 
@@ -25,7 +35,60 @@ def acc_login(request):
             # request.session['username'] = username
             # request.session.set_expiry(60 * 60 * 12 * 2)
         if user.is_staff == 1:
-            return JsonResponse({"code": 200, "username": username})
+            init_permission(request, user)
+
+            menu = request.session[settings.SESSION_MENU_KEY]
+            all_menu = menu[settings.ALL_MENU_KEY]
+            permission_url = menu[settings.PERMISSION_MENU_KEY]
+            # 定制数据结构
+            all_menu_dict = {}
+            for item in all_menu:
+                item['isShow'] = True
+                item['children'] = []
+                all_menu_dict[item['id']] = item
+
+            # request_rul = '/stock/in'
+            import re
+
+            for url in permission_url:
+                # 添加两个状态：显示 和 展开
+                url['isShow'] = True
+                pattern = url['url']
+                # if re.match(pattern, request_rul):
+                #     url['open'] = True
+                # else:
+                #     url['open'] = False
+
+                # 将url添加到菜单下
+                all_menu_dict[url['menu_id']]["children"].append(url)
+                # print('all_menu_Dict ---------------\n', all_menu_dict)
+                # 显示菜单：url 的菜单及上层菜单 status: true
+                pid = url['menu_id']
+                while pid:
+                    all_menu_dict[pid]['isShow'] = True
+                    pid = all_menu_dict[pid]['parent_id']
+
+                # 展开url上层菜单：url['open'] = True, 其菜单及其父菜单open = True
+                # if url['open']:
+                #     ppid = url['menu_id']
+                #     while ppid:
+                #         all_menu_dict[ppid]['open'] = True
+                #         ppid = all_menu_dict[ppid]['parent_id']
+
+            # 整理菜单层级结构：没有parent_id 的为根菜单， 并将有parent_id 的菜单项加入其父项的chidren内
+            final_menu = []
+            for i in all_menu_dict:
+                # if all_menu_dict[i]['parent_id']:
+                #     pid = all_menu_dict[i]['parent_id']
+                #     parent_menu = all_menu_dict[pid]
+                #     parent_menu['children'].append(all_menu_dict[i])
+                # else:
+                if all_menu_dict[i]['children']:
+                    final_menu.append(all_menu_dict[i])
+
+            print('final_menu ---------------\n', final_menu)
+
+            return JsonResponse({"code": 200, "username": username, "final_menu": final_menu})
 
         else:
             return JsonResponse({"code": 401})
@@ -46,164 +109,87 @@ def index(request):
     return HttpResponse('ok')
 
 
-class UserListView(View):
-    """
-    查询所有用户信息，增加用户
-    """
-    def get(self, request):
-        """
-        查询所有用户
-        路由：GET/userlist/
-        :param request:
-        :return:
-        """
+def userlist(request):
+
+    if request.method == "GET":
+        aQ = Q()
         name = request.GET.get('username', '')
-        if name:
-            queryset = UserInfo.objects.filter(username__contains=name)
+        is_staff = request.GET.get('is_staff', '')
+        if name or is_staff:
+            if name:
+                aQ.add(Q(username__contains=name), Q.OR)
+            if is_staff:
+                aQ.add(Q(is_staff=is_staff), Q.OR)
+            queryset = UserInfo.objects.filter(aQ)
         else:
             queryset = UserInfo.objects.all()
         user_list = []
+        print(queryset)
         for user in queryset:
+            # user1 = UserInfo(username=user)
+            # print(user1)
+            # print(list(user.roles.all())[0])
+            role = user.roles.all()
+            role_json = serializers.serialize('json', role)
+            roles_str = json.loads(role_json)
+            roles = roles_str[0]['fields']['title']
             user_list.append({
                 'id': user.id,
+                'roles': roles,
                 'username': user.username,
                 'first_name': user.first_name,
                 'is_staff': user.is_staff
             })
-        return JsonResponse(user_list, safe=False)
+        return JsonResponse({'user_list': user_list, 'code': 200})
+    else:
+        pk = request.POST.get("pk")
+        is_staff = request.POST.get('is_staff', '')
+        print(is_staff)
 
-    def post(self, request):
-        """
-        新增用户
-        路由：POST/userlist/
-        :param request:
-        :return:
-        """
-        json_bytes = request.body
-        json_str = json_bytes.decode()
-        user_dict = json.loads(json_str)
+        if pk:
+            user_obj = UserInfo.objects.filter(id=pk).first()
+            """修改"""
+            if is_staff is not '':
+                if is_staff == '0':
+                    user_obj.is_staff = 0
+                    user_obj.save()
+                else:
+                    user_obj.is_staff = 1
+                    user_obj.save()
+                return JsonResponse({'code': 200})
+            else:
+                model_form = UserInfoModelForm(request.POST, instance=user_obj)
+                if model_form.is_valid():
+                    model_form.save()
+                    return JsonResponse({'code': 200})
+                else:
+                    return JsonResponse({'code': 401})
 
-        username = user_dict['username']
-        username2 = UserInfo.objects.filter(username=username)
-        if username2:
-            return JsonResponse({"code": 400, "msg": "用户名已有"})
-        user = UserInfo.objects.create(
-            username=user_dict.get('username'),
-            first_name=user_dict.get('first_name'),
-            password=user_dict.get('password'),
-            is_staff=True
-        )
-
-        return JsonResponse({
-            'id': user.id,
-            'username': user.username,
-            'first_name': user.first_name,
-            'is_staff': user.is_staff
-        })
-
-
-class UserDetailView(View):
-
-    def put(self, request, pk):
-        try:
-            user = UserInfo.objects.get(id=pk)
-        except UserInfo.DoesNotExist:
-            return HttpResponse(status=404)
-
-        json_bytes = request.body
-        json_str = json_bytes.decode()
-        user_dict = json.loads(json_str)
-
-        user.username = user_dict.get('username')
-        user.password = user_dict.get('password')
-        user.first_name = user_dict.get('first_name')
-        user.save()
-
-        return JsonResponse({
-            'id': user.id,
-            'username': user.username,
-            'first_name': user.first_name,
-            'is_staff': user.is_staff
-        })
-
-    def delete(self, request, pk):
-        try:
-            user = UserInfo.objects.get(id=pk)
-        except UserInfo.DoesNotExist:
-            return HttpResponse(status=404)
-
-        json_bytes = request.body
-        json_str = json_bytes.decode()
-        user_dict = json.loads(json_str)
-
-        is_staff = user_dict.get('is_staff')
-        if is_staff == 1:
-            user.is_staff = 0
-            user.save()
         else:
-            user.is_staff = 1
-            user.save()
-
-        return JsonResponse({
-            'id': user.id,
-            'username': user.username,
-            'first_name': user.first_name,
-            'is_staff': user.is_staff
-        })
-
-# def user_list(request):
-#     # 用户列表
-#     name = request.GET.get("username", "")
-#     if name:
-#         print(name)
-#         all_users = UserInfo.objects.filter(username__contains=name)
-#     else:
-#         all_users = UserInfo.objects.all()
-#     resultList = []
-#     for index in all_users:
-#         resultList += [{
-#             "username": index.username,
-#             "first_name": index.first_name,
-#         }]
-#     # 返回值
-#     # response = JsonResponse(resultList, safe=False)
-#     # response.status_code = 500  自定义响应码
-#     return HttpResponse(json.dumps(resultList), content_type='application/json')
-#
-#
-# class UserForm(forms.Form):
-#     username = forms.CharField(label='用户名', max_length=100)
-#     first_name = forms.CharField(label='姓名')
-#     password = forms.CharField(label='密码')
-#     # is_staff = forms.BooleanField(label='是否在职')
-#
-#
-# def regist(request):
-#     print(request.POST)
-#     print(request.method)
-#     print(request.body)
-#     if request.method == 'POST':
-#         uf = UserForm(request.POST)  # 包含用户名和姓名
-#         if uf.is_valid():
-#             username = uf.cleaned_data['username']  # cleaned_data类型是字典，里面是提交成功后的信息
-#             user_name = UserInfo.objects.filter(username=username)
-#             print(username)
-#             if user_name:
-#                 return JsonResponse({"code": 400, "msg": "用户名已有"})
-#             first_name = uf.cleaned_data['first_name']
-#             password = uf.cleaned_data["password"]
-#             print("Pusername" + username)
-#             # password = '111111'
-#             # 添加到数据库
-#             # registAdd = User.objects.get_or_create(username=username,password=password)
-#             registAdd = UserInfo.objects.create(username=username, first_name=first_name, password=password)
-#             # print registAdd
-#             if registAdd:
-#                 return JsonResponse({"code": 200})
-#             else:
-#                 # return HttpResponse('ok')
-#                 return JsonResponse({"code": 401})
-#     else:
-#         return JsonResponse({"code": 402, "msg": "get请求返回页面"})
+            # password = request.POST.get('password')
+            # p = request.POST.copy()
+            # npassword = make_password()
+            # p.update({'password': npassword})
+            # model_form = UserInfoModelForm(p)
+            model_form = UserInfoModelForm(request.POST)
+            # username = request.POST.get('username')
+            # password = request.POST.get('password')
+            # first_name = request.POST.get('first_name')
+            # roles = request.POST.get('roles')
+            # c = UserInfo(username=username,password=password,first_name=first_name,is_staff=True)
+            # c.save()
+            # c.roles.set(roles)
+            # c.save()
+            # return JsonResponse({'code': 200})
+            # print(model_form)
+            if model_form.is_valid():
+                model_form.save()
+                return JsonResponse({
+                    'code': 200,
+                })
+            else:
+                return JsonResponse({
+                    'code': 401
+                })
 
 

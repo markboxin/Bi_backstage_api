@@ -15,10 +15,15 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import path
-from django.conf.urls import url,include
+from django.conf.urls import url, include
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-    url(r'api/',include('login.urls')),
-    url(r'api/',include('combo.urls'))
+    url(r'api/', include('login.urls')),
+    url(r'api/', include('combo.urls')),
+    url(r'api/', include('combov1.urls')),
+    url(r'api/', include('erp.urls')),
+    url(r'api/', include('course.urls')),
+    url(r'api/', include('order_flow.urls')),
+    url(r'/', include('rbac.urls'))
 ]

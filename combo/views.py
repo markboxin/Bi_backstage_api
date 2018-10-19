@@ -105,10 +105,11 @@ def order(request):
     out_time1 = request.GET.get("out_time1")
     out_time2 = request.GET.get("out_time2")
     pay_voucher = request.GET.get("pay_voucher")
+    agent_linkman = request.GET.get("agent_linkman")
     # status = {'order_code':'','operater':'','combo_name':'','agent_name':'','pay_method':''}
     print(order_code)
     each_page = 30
-    if order_code or operater or combo_name or agent_name or order_status\
+    if order_code or operater or combo_name or agent_name or order_status or agent_linkman\
             or is_plan or school_name or order_create_time1 or order_create_time2 or\
             sales_unit_name or is_garden_confirm or is_nerwork or unpaid_amount or school_address or out_time1 or pay_voucher:
         aQ1 = Q()
@@ -122,6 +123,10 @@ def order(request):
             aQ1.add(Q(operater__contains=operater), Q.OR)
             aQ2.add(Q(operater__contains=operater), Q.AND)
             list1.append(operater)
+        if agent_linkman is not None:
+            aQ1.add(Q(agent_linkman__contains=agent_linkman), Q.OR)
+            aQ2.add(Q(agent_linkman__contains=agent_linkman), Q.AND)
+            list1.append(agent_linkman)
 
         if unpaid_amount is not None:
             aQ1.add(Q(unpaid_amount=unpaid_amount), Q.OR)
@@ -199,26 +204,18 @@ def order(request):
             aQ2.add(Q(sales_unit_name__contains=sales_unit_name), Q.AND)
             list1.append(sales_unit_name)
         if out_time1 or out_time2 is not None:
-            if out_time1 == out_time2:
-                start_date = datetime.datetime.strptime(out_time1, "%Y-%m-%d")
-                end_data = datetime.datetime.strptime(out_time2, "%Y-%m-%d") + datetime.timedelta(days=1)
-            else:
-                start_date = datetime.datetime.strptime(out_time1, "%Y-%m-%d")
-                end_data = datetime.datetime.strptime(out_time2, "%Y-%m-%d")
-            print(start_date)
+
+            start_date = datetime.datetime.strptime(out_time1, "%Y-%m-%d")
+            end_data = datetime.datetime.strptime(out_time2, "%Y-%m-%d") + datetime.timedelta(days=1)
 
             aQ1.add(Q(out_time__range=(start_date, end_data)), Q.OR)
             aQ2.add(Q(out_time__range=(start_date, end_data)), Q.AND)
             list1.append(out_time1)
 
         if order_create_time1 or order_create_time2 is not None:
-            if order_create_time1 == order_create_time2:
-                start_date = datetime.datetime.strptime(order_create_time1, "%Y-%m-%d")
-                end_data = datetime.datetime.strptime(order_create_time2, "%Y-%m-%d") + datetime.timedelta(days=1)
-            else:
-                start_date = datetime.datetime.strptime(order_create_time1, "%Y-%m-%d")
-                end_data = datetime.datetime.strptime(order_create_time2, "%Y-%m-%d")
-            print(start_date)
+
+            start_date = datetime.datetime.strptime(order_create_time1, "%Y-%m-%d")
+            end_data = datetime.datetime.strptime(order_create_time2, "%Y-%m-%d") + datetime.timedelta(days=1)
 
             aQ1.add(Q(order_create_time__range=(start_date, end_data)), Q.OR)
             aQ2.add(Q(order_create_time__range=(start_date, end_data)), Q.AND)
@@ -228,8 +225,9 @@ def order(request):
         page = int(request.GET.get('page', '1'))
         if len(list1) == 1:
             all_orders = IbOrder.objects.filter(aQ1).order_by('-order_create_time')
-            school_number = IbOrder.objects.filter(aQ1).values('school_id').distinct().count()
-            class_number = IbOrder.objects.filter(aQ1).values('class_id').distinct().count()
+
+            school_number = IbOrder.objects.filter(aQ1).filter(school_id__isnull=False).values('school_id').distinct().count()
+            class_number = IbOrder.objects.filter(aQ1).filter(class_id__isnull=False).values('class_id').distinct().count()
             if page == -1:
                 p_num = IbOrder.objects.filter(aQ1).count()
                 print(p_num)
@@ -245,10 +243,10 @@ def order(request):
                     contacts = paginator.page(paginator.num_pages)
         else:
             all_orders = IbOrder.objects.filter(aQ2).order_by('-order_create_time')
-            school_number = IbOrder.objects.filter(aQ2).values('school_id').distinct().count()
-            class_number = IbOrder.objects.filter(aQ2).values('class_id').distinct().count()
+            school_number = IbOrder.objects.filter(aQ2).filter(school_id__isnull=False).values('school_id').distinct().count()
+            class_number = IbOrder.objects.filter(aQ2).filter(class_id__isnull=False).values('class_id').distinct().count()
             if page == -1:
-                p_num = IbOrder.objects.filter(aQ1).count()
+                p_num = IbOrder.objects.filter(aQ2).count()
                 print(p_num)
                 contacts = all_orders
             else:
@@ -263,8 +261,8 @@ def order(request):
 
     else:
         all_orders = IbOrder.objects.all().order_by('-order_create_time')
-        school_number = IbOrder.objects.values('school_id').distinct().count()
-        class_number = IbOrder.objects.values('class_id').distinct().count()
+        school_number = IbOrder.objects.filter(school_id__isnull=False).values('school_id').distinct().count()
+        class_number = IbOrder.objects.filter(class_id__isnull=False).values('class_id').distinct().count()
         print(school_number)
         print(class_number)
         page = int(request.GET.get('page', '1'))
@@ -330,7 +328,11 @@ def order(request):
             "unpaid_amount": index.unpaid_amount,
             "school_address": index.school_address,
             "out_time": index.out_time,
-            "pay_voucher": index.pay_voucher
+            "pay_voucher": index.pay_voucher,
+            # "operater_id": index.operater_id,
+            "stock_out_num": index.stock_out_num,
+            "agent_linkman": index.agent_linkman,
+            "subjection_project": index.subjection_project
         }]
 
     # 返回值
