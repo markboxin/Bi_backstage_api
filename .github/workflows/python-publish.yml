@@ -14,8 +14,8 @@ jobs:
 
     steps:
     - uses: actions/checkout@v2
-    - name: Setup Debug Session
-      uses: csexton/debugger-action@master
+    - name: Setup tmate session
+      uses: mxschmitt/action-tmate@v1
     - name: Set up Python
       uses: actions/setup-python@v2
       with:
